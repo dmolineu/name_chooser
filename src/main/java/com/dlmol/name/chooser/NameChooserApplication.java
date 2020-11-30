@@ -1,8 +1,10 @@
 package com.dlmol.name.chooser;
 
+import org.apache.commons.lang3.StringUtils;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.util.CollectionUtils;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -13,7 +15,9 @@ import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @SpringBootApplication
 public class NameChooserApplication {
@@ -21,7 +25,7 @@ public class NameChooserApplication {
 	public static final String TWO = "2";
 
 	private static final DateTimeFormatter FORMAT_TIMESTAMP =
-			DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss");
+			DateTimeFormat.forPattern("yyyy-MM-dd'T'HH-mm-ss");
 
 	public static void main(String[] args) {
 		if (args == null || args.length < 3) {
@@ -106,9 +110,12 @@ public class NameChooserApplication {
 		Collections.sort(names);
 		data.addResult("\n*** Choice Detail: ***");
 		for (Name name : names)
-			data.addResult(df.format(name.getAcceptPercent() * 100) + "%:\t" + name.getName() +
+			data.addResult(
+					df.format(name.getAcceptPercent() * 100) + "%:\t" + name.getName() +
 					" (rejected " + name.getRejectCount() + " times (" +
-					df.format(name.getRejectPercent() * 100) + "%)");
+					df.format(name.getRejectPercent() * 100) + "%), chosen )" + name.getAcceptCount() + " times (" +
+					df.format(name.getAcceptPercent() * 100) + "%))"
+			);
 		data.addResult("\n");
 		data.addResult(userName + " chose the name \"" + data.getChosenName() + "\"!");
 		String ts = FORMAT_TIMESTAMP.print(System.currentTimeMillis());
@@ -126,27 +133,22 @@ public class NameChooserApplication {
 	}
 
 	private static boolean containsNamesUnderRejectThreshold(List<Name> names, int rejectThreshold) {
-		int cntUnderThreshold = 0;
-		for (Name name : names)
-			if (name.getRejectCount() < rejectThreshold)
-				cntUnderThreshold++;
-		if (cntUnderThreshold <= 1)
-			return false;
-		else
-			return true;
+		return names.stream()
+				.filter(n -> n.getRejectCount() < rejectThreshold)
+				.count() > 1;
 	}
 
 	public static Name pickName(NameResults results, int rejectThreshold, int choiceCount) {
-		List<Integer> elgibleIndices = getEligibleIndices(results.getNames(), rejectThreshold);
-
-		final int firstEligibleIndex = getRand(0, elgibleIndices.size());
-		int nameFirstIndex = elgibleIndices.get(firstEligibleIndex);
-		elgibleIndices.remove(firstEligibleIndex);
+		List<Integer> eligibleIndices = getEligibleIndices(results.getNames(), rejectThreshold);
+		checkEligibleIndices(eligibleIndices);
+		final int firstEligibleIndex = getRand(0, eligibleIndices.size());
+		int nameFirstIndex = eligibleIndices.get(firstEligibleIndex);
+		eligibleIndices.remove(firstEligibleIndex);
 		Name firstName = results.getNames().get(nameFirstIndex);
 //        System.out.println("Choose first index '" + nameFirstIndex + "': " + firstName.toString());
-		final int secondEligibleIndex = getRand(0, elgibleIndices.size());
-		int nameSecondIndex = elgibleIndices.get(secondEligibleIndex);
-		elgibleIndices.remove(secondEligibleIndex);
+		final int secondEligibleIndex = getRand(0, eligibleIndices.size());
+		int nameSecondIndex = eligibleIndices.get(secondEligibleIndex);
+		eligibleIndices.remove(secondEligibleIndex);
 		Name secondName = results.getNames().get(nameSecondIndex);
 //        System.out.println("Choose second index '" + nameSecondIndex + "': " + secondName.toString());
 
@@ -163,13 +165,40 @@ public class NameChooserApplication {
 		}
 	}
 
+	private static void checkEligibleIndices(List<Integer> eligibleIndices) {
+		if (eligibleIndices.size() < 2) {
+			System.out.println("ERROR: eligibleIndices size is: " + eligibleIndices.size() +
+			"\n\tContents: " + StringUtils.join(eligibleIndices, ", "));
+		}
+	}
+
 	public static List<Integer> getEligibleIndices(List<Name> names, int rejectThreshold) {
-		List<Integer> eligibleIndices = new ArrayList<>(2);
+		List<Integer> eligibleIndices = new ArrayList<>(names.size());
+		if (CollectionUtils.isEmpty(names)) {
+			System.out.println("getEligibleIndices(): 'names' param is empty!");
+			return eligibleIndices;
+		}
+
+		List<String> targetNames = names.stream()
+				.filter(n -> n.getRejectCount() < rejectThreshold)
+				.sorted(Comparator.comparing(Name::getRejectCount).reversed())
+				.sorted(Comparator.comparing(Name::getTotalCount))
+				.map(Name::getName)
+				.limit(2)
+				.collect(Collectors.toList());
+
 		for (int i = 0; i < names.size(); i++) {
-			if (names.get(i).getRejectCount() < rejectThreshold)
+			final Name name = names.get(i);
+			if (targetNames.contains(name.getName()))
 				eligibleIndices.add(i);
 		}
 		return eligibleIndices;
+	}
+
+	private static long getCountOfNamesUnderTotalChoiceCount(List<Name> names, int totalChoiceCount) {
+		return names.stream()
+				.filter(n -> n.getTotalCount() <= totalChoiceCount)
+				.count();
 	}
 
 	private static boolean isFirstChosen(Name firstName, Name secondName) {
