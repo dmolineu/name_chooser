@@ -49,7 +49,7 @@ public class NameChooserApplicationTests {
 
 		IntStream.range(0, 100).forEach(i -> {
 			List<Integer> eligibleIndices = NameChooserApplication.getEligibleIndices(names, 2);
-			assertTrue("Expected size 3 but received: " + eligibleIndices.size(), eligibleIndices.size() == 3);
+			assertTrue("Expected size 2 but received: " + eligibleIndices.size(), eligibleIndices.size() == 2);
 		});
 	}
 }
