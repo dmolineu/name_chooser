@@ -1,0 +1,1 @@
+Use Gradle "bootJar" task to package application. "name_chooser.bat" can be used to run app from default build location.
