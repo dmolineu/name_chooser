@@ -71,7 +71,8 @@ public class NameChooserApplication {
 
 		final NameResults results = chooseName(names, rejectThreshold);
 		writeOutput(userName, results);
-		System.out.println("\nYour chosen name is: \"" + results.getChosenName() + "\"!!!");
+		System.out.println("\n************************************************\n\tYour chosen name is: \"" +
+				results.getChosenName() + "\"!!!\n************************************************\n");
 	}
 
 //    private static String cleanName(String userName) {
@@ -111,9 +112,9 @@ public class NameChooserApplication {
 		data.addResult("\n*** Choice Detail: ***");
 		for (Name name : names)
 			data.addResult(
-					df.format(name.getAcceptPercent() * 100) + "%:\t" + name.getName() +
+					StringUtils.rightPad(df.format(name.getAcceptPercent() * 100) + "%:", 6) + name.getName() +
 					" (rejected " + name.getRejectCount() + " times (" +
-					df.format(name.getRejectPercent() * 100) + "%), chosen )" + name.getAcceptCount() + " times (" +
+					df.format(name.getRejectPercent() * 100) + "%), chosen " + name.getAcceptCount() + " times (" +
 					df.format(name.getAcceptPercent() * 100) + "%))"
 			);
 		data.addResult("\n");
@@ -129,7 +130,7 @@ public class NameChooserApplication {
 			e.printStackTrace();
 			System.out.println("Unable to write output to file!");
 		}
-		System.out.println("\nDetailed results written to: " + outfileName);
+		System.out.println("\n\nDetailed results written to: " + outfileName);
 	}
 
 	private static boolean containsNamesUnderRejectThreshold(List<Name> names, int rejectThreshold) {

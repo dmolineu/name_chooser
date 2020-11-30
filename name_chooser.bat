@@ -1,0 +1,1 @@
+java -jar build\libs\name_chooser-1.0.0.jar src\test\resources\testNames.txt 1 TESTING
